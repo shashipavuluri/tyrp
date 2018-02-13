@@ -9,6 +9,9 @@ var http = require('http');
 
 var index = require('./routes/index');
 var webproxy = require('./routes/webproxy');
+var static = require('./routes/static');
+var s1 = require('./routes/s1');
+var nopup = require('./routes/nopup');
 
 var app = express();
 
@@ -25,7 +28,10 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', index);
-app.use('/webproxy', webproxy);
+app.use('*', static);
+//app.use('*', s1);
+//app.use('/', nopup);
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

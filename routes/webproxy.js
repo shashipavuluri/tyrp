@@ -4,76 +4,58 @@ var url = require('url');
 
 var router = express.Router();
 
+var DOMParser = require('xmldom').DOMParser;
+
+
 const puppeteer = require('puppeteer');
 
-
+var prev_link = ''
 
   /* GET  data using chromium. */
 router.get('/', async function(req, res, next) {
-  console.log("link id %s", req.query.link)
+  
+
   var url_link = req.query.link;
-  //proxyRequests(req, res)
+
+  console.log("Final resolved url [%s]", url_link);
   
   const browser = await puppeteer.launch({headless: true,
     args: ['--disable-gpu', '--no-sandbox', '--disable-setuid-sandbox'],});
 
   const page = await browser.newPage();
-  //await page.setUserAgent('Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36');
+  page.once('load', () => console.log('Page loaded!'));
 
   await page.goto(url_link, {
-                      waitUntil: "load",
-                });
- 
-  //await scrollPage(page);
+                    waitUntil: 'load',
+                  })
 
   let bodyHTML = await page.evaluate(() => document.documentElement.outerHTML );
-  //const html =  await page.content()
-  const renderedContent = await page.evaluate(() => new XMLSerializer().serializeToString(document));
-  const bhtml = await page.evaluate('new XMLSerializer().serializeToString(document.doctype) + document.documentElement.outerHTML');
+  const html =  await page.content()
+  
+  var doc = new DOMParser().parseFromString(html, "text/html");
 
-  await page.screenshot({ path: './google.png' });
-  //console.log("html %s", bhtml)
-  //browser.close();
-  res.send(bhtml);
+  console.log(doc.documentElement.outerHTML);
+
+  var links =  doc.getElementsByTagName("a");
+  
+  for (var i=0;i<links.length;i++) {
+    if(links[i].getAttribute('href').startsWith("http") || 
+    links[i].getAttribute('href').startsWith("https") ||
+    links[i].getAttribute('href').startsWith("www")) {
+      continue;
+    }
+    //console.log("OLD LINKS=========== %s", links[i].getAttribute('href'));
+    //links[i].setAttribute('href', url_link + links[i].getAttribute('href'));
+    //console.log("NEW LINKS=========== %s", links[i].getAttribute('href'));
+  }
+
+  console.log(doc.getElementById('html'));
+  console.log(doc.doctype);
+  //res.send(html);
+  console.log(doc.documentElement.outerHTML);
+  res.send('<!DOCTYPE HTML>' + '\n' + doc.documentElement.outerHTML);
   
 });
 
+
 module.exports = router;
-
-
-async function scrollPage(page) {
-  // Scroll to page end to trigger lazy loading elements
-  await page.evaluate(() => {
-    const scrollInterval = 100;
-    const scrollStep = Math.floor(window.innerHeight / 2);
-    const bottomThreshold = 400;
-
-    function bottomPos() {
-      return window.pageYOffset + window.innerHeight;
-    }
-
-    return new Promise((resolve, reject) => {
-      function scrollDown() {
-        window.scrollBy(0, scrollStep);
-
-        if (document.body.scrollHeight - bottomPos() < bottomThreshold) {
-          window.scrollTo(0, 0);
-          setTimeout(resolve, 500);
-          return;
-        }
-
-        setTimeout(scrollDown, scrollInterval);
-      }
-
-      setTimeout(reject, 30000);
-      scrollDown();
-    });
-  });
-}
-
-
-function proxyRequests(req, res) {
-  var proxiedUrl = req.query.link || req.url;
-  request(proxiedUrl).pipe(res);
-}
-
