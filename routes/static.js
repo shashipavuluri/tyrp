@@ -78,7 +78,7 @@ router.get('/', async function(req, res, next) {
 
   console.log("HTML BEFORE DOM CREATION ===> " , html)
   
-  //test_jsdom();
+  test_jsdom();
   
   res.send( html);
  }
@@ -119,8 +119,8 @@ function test_jsdom(url_link) {
 
   html = html + '<script src="http://localhost:3000/js/data.js"></script>'
 
-  html = html + '<script> document.getElementById("ext1").innerHTML = window. printHelloU()</script>'
-  //html + '<script> printHelloU()</script>'
+  html = html + '<script> document.getElementById("ext1").innerHTML = printHelloU()</script>'
+  html + '<script> printHelloU()</script>'
 
   html = html + "</body> </html> "
   
@@ -131,15 +131,7 @@ function test_jsdom(url_link) {
                         resources: "usable"}
                        );
 
-  var window = dom.window;
-  window.addEventListener('load', function () { 
-    console.log("callback")
-    console.log("callback===" , )
-    console.log(window.document.getElementById("ext1").innerHTML);
-    });
-  console.log(dom.window.document.getElementById("demo").innerHTML);
-
-  console.log(dom.window.document.getElementById("ext1").innerHTML);
+  console.log("JSDOM ===> innerHTML " , dom.window.document.body.innerHTML)
 
 }
 
