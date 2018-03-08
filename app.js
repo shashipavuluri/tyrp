@@ -8,10 +8,7 @@ var http = require('http');
 
 
 var index = require('./routes/index');
-var webproxy = require('./routes/webproxy');
 var static = require('./routes/static');
-var s1 = require('./routes/s1');
-var nopup = require('./routes/nopup');
 
 var app = express();
 
@@ -25,12 +22,14 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+
+app.use('/img',express.static(path.join(__dirname, 'public/images')));
+app.use('/js',express.static(path.join(__dirname, 'public/javascripts')));
+app.use('/css',express.static(path.join(__dirname, 'public/stylesheets')));
+
 
 app.use('/', index);
 app.use('*', static);
-//app.use('*', s1);
-//app.use('/', nopup);
 
 
 // catch 404 and forward to error handler

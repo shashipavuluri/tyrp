@@ -6,155 +6,142 @@ var router = express.Router();
 
 const jsdom = require("jsdom");
 
+
+jsdom.defaultDocumentFeatures = {
+  //FetchExternalResources   : ['script'],
+  //ProcessExternalResources : ['script'],
+  //MutationEvents           : '2.0',
+  //QuerySelector            : false
+};
+
 var wget = require('node-wget');
 
-
-//var $ = require('jQuery')
-
-/*** 
-const jsdom = require('jsdom').defaultDocumentFeatures = {
-  FetchExternalResources   : ['img', 'script'],
-  ProcessExternalResources : true,
-  MutationEvents           : false,
-  QuerySelector            : false
-}
-*/
 const { JSDOM } = jsdom;
 
 const puppeteer = require('puppeteer');
 
 var prev_link = ''
 
-
-
   /* GET  data using chromium. */
 router.get('/', async function(req, res, next) {
   
   var url_link ='';
   console.log("got request %s", req.baseUrl)
-
+  if(req.baseUrl == "/favicon.ico") {
+    return;
+  }
  
-
-
   if(!req.url.startsWith("/?link")) {
     url_link = prev_link  + req.baseUrl;
     console.log("final url %s", url_link);
     console.log("method url %s", req.method);
 
     if(req.method =="POST") {
-      console.log("PPPOST");
+      console.log("POST");
     }
     
-    /*
-    var b1 = await puppeteer.launch({headless: true,
-      args: ['--disable-gpu', '--no-sandbox', '--disable-setuid-sandbox'],});
-      var page1 = await b1.newPage();
-  
-      await page1.goto(url_link, {
-        waitUntil: 'load',
-      })
-
-      var conty =  await page1.content()
-      */
     var rbody = '';
     req.pipe(request(url_link)).pipe(res);
-    /*
-    request(url_link, function(error, response, body) {
-      console.log('error:', error); // Print the error if one occurred
-      console.log('statusCode:', response && response.statusCode);
-      console.log('body:', body);
-      res.send(body)
-    });  
-  */
   }
 
 
   if(req.url.startsWith("/?link")) {
     url_link = req.query.link;
     prev_link = req.query.link;
-    console.log("Prevlink  url [%s]", prev_link);
+    
+    console.log("Saving the Prevlink  : url [%s]", prev_link);
 
     const browser = await puppeteer.launch({headless: true,
       args: ['--disable-gpu', '--no-sandbox', '--disable-setuid-sandbox'],});
     
   
-
   console.log("Final resolved url [%s]", url_link);
-  
   
   const page = await browser.newPage();
 
-  //await page.setRequestInterception(true);
   var scripts =[];
-/*
-  page.on('request', request => {
-    console.log("Request URL =======>on request : %s" , request.url())
-    
-    //console.log("Request TYPE =======>on request : %s" ,  c)
-    if(request.resourceType() == 'script') {
-      request.continue();   
-    } else {
-      request.continue();
-    }
-  });
-*/
+
   page.once('load', () => console.log('Page loaded!'));
 
 
+   await page.setJavaScriptEnabled(false)
+   await page.setRequestInterception(true);
+
+  page.on('request', intercepted => intercepted.continue())
+  
   console.log("Going to Fetch ==========>[%s]", url_link)
   await page.goto(url_link, {
                     waitUntil: 'load',
                   })
 
-  //let bodyHTML = await page.evaluate(() => document.documentElement.outerHTML );
   const html =  await page.content()
+
+  console.log("HTML BEFORE DOM CREATION ===> " , html)
   
-  const dom = new JSDOM(html, { resources: "usable",  documentRoot: url_link});
-
-  var r = dom.window.document.getElementsByTagName('script');
-
-  for (var i = (r.length-1); i >= 0; i--) {
-    var tmp = r[i];
+  //test_jsdom();
   
-    if(tmp.getAttribute('id') != 'a'){
-      console.log("id %s" , tmp.src)
-      if(tmp.src.startsWith("/")) {
-        tmp.src = url_link + tmp.src;
-      }
-      console.log("chaged id %s" , tmp.src)
-
-      //tmp.parentNode.removeChild(tmp);
-    }
-
-}
-
-
-  var elements = dom.window.document.getElementsByTagName("a");
-
-  //var link = dom.window.document.querySelector('link');
-  //console.log("link ", elements)
-  for(let i=0; i<elements.length; i++){
-    //console.log('Anchor old=======> %s', elements[i].innerHTML);
-    //console.log('Anchor old=======> %s', elements[i].href);
-    //elements[i].textContent = url_link + elements[i].innerHTML;
-    //element.remove() if removing
-    //console.log('Anchor new=======> %s', elements[i].textContent);
-  }
-
-  /*
-  var elements = dom.window.document.getElementById("link");
- 
-  for(let i=0; i<elements.length; i++){
-    console.log('Anchor old=======> %s', elements[i].textContent);
-    elements[i].textContent = url_link + elements[i].textContent;
-    //element.remove() if removing
-    console.log('Anchor new=======> %s', elements[i].textContent);
-  }
-  */
-  //console.log("dom.window.document.documentElement.outerHTML")
-  res.send('<!DOCTYPE html>' + '\n' + dom.window.document.documentElement.outerHTML);
+  res.send( html);
  }
 });
+
+
+function test_jsdom(url_link) {
+
+  JSDOM.fromURL("http://localhost:3000/", {
+    url: url_link, 
+    runScripts: "dangerously" ,
+  resources: "usable"}).then(dom => {
+  console.log("iNIIIII" , dom.serialize());
+  });
+
+  var html = "<!DOCTYPE html> <html> <body> "
+  html = html + "<h2>Test pagew</h2>"
+  html = html + "<p>WITH various JAVA scripts.</p>"
+
+  html = html + ' <p id="datedemo">Date will appear when button clicked</p>'
+
+  html = html + ' <p id="ext1">Text to be changed when ext JS runs...1</p>'
+
+
+  html = html + ' <p id="demo">Text should change automaically when inline js runs</p>'
+
+
+  html = html + ' <script>'
+  html = html + ' function myFunction() { return "PRINTED DUE TO RUNNING OF SCRIPT" } '
+  html = html + ' document.getElementById("demo").innerHTML = myFunction(); '
+  html = html + ' </script>'
+
+
+  html = html + ' <p id="ext1">Text to be changed when ext JS runs...1</p>'
+
+  html = html + ' <p id="ext2">Text to be changed when ext JS runs...2</p>'
+
+
+  html = html + '<script src="http://localhost:3000/js/data.js"></script>'
+
+  html = html + '<script> document.getElementById("ext1").innerHTML = window. printHelloU()</script>'
+  //html + '<script> printHelloU()</script>'
+
+  html = html + "</body> </html> "
+  
+  const dom = new JSDOM(html
+                        ,{
+                          url: url_link, 
+                          runScripts: "dangerously" ,
+                        resources: "usable"}
+                       );
+
+  var window = dom.window;
+  window.addEventListener('load', function () { 
+    console.log("callback")
+    console.log("callback===" , )
+    console.log(window.document.getElementById("ext1").innerHTML);
+    });
+  console.log(dom.window.document.getElementById("demo").innerHTML);
+
+  console.log(dom.window.document.getElementById("ext1").innerHTML);
+
+}
 
 
 
